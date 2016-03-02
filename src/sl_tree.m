@@ -66,8 +66,7 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
 
     %fsemilag        = fconc_exact;   
     fsemilag        = @semilag;
-
-
+    
     % FIRST METHOD: CONSTRUCT THE NEXT TIME STEP TREE FROM SCRATCH WITH
     %               SEMILAG SOLVER AS REFINEMENT FUNCTION
     % cnext = qtree;

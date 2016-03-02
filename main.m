@@ -103,7 +103,7 @@ function main()
 
         %max_level_list = [4 5 6];
         max_level_list = [3 4 5];
-        tn_init = 200;
+        tn_init = 100;
         
         MAX_LEVEL = 3;
         TN        = tn_init;

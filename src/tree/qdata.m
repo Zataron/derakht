@@ -357,6 +357,37 @@ classdef qdata < handle
         end   
         
         %/* ************************************************** */
+        function val = get_mass_ratio(src_tree,fexact,t,INTERP_TYPE)
+            if strcmp(INTERP_TYPE, 'CHEBYSHEV')
+                % currently only regular grid is supported!
+                val = 0;
+                return;
+            end
+            global RES_PER_NODE;
+            src_leaves  = src_tree.leaves();
+            val_interp = 0;
+            % NOTE: val_exact uses exact function values, but the mass is
+            % still approximated using trapz()
+            val_exact = 0;
+            val = 0;
+            for src_lvcnt =1:length(src_leaves)
+                src_leaf = src_leaves{src_lvcnt};
+                interp_data = src_leaf.data.values;
+                [xxr,yyr,zzr,dx,dy,dz] = src_leaf.mesh(RES_PER_NODE);
+                
+                x = xxr(1,1:end);
+                y = yyr(1:end,1);
+                val_interp = val_interp + trapz(y,trapz(x,interp_data,2));
+                
+                exact_data = fexact(t,xxr,yyr,zzr);
+                val_exact = val_exact + trapz(y,trapz(x,exact_data,2));
+            end
+            if val_exact ~= 0
+                val = val_interp/val_exact;
+            end
+        end          
+        
+        %/* ************************************************** */
         function val = get_mass_squared(src_tree,INTERP_TYPE)
             if strcmp(INTERP_TYPE, 'CHEBYSHEV')
                 % currently only regular grid is supported!
