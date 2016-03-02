@@ -51,10 +51,10 @@ function main()
         RES_PER_NODE       = 14;    % Resolution per Node
         ADAPTIVE           = false;
         INTERP_TYPE        = 'cubic';
-        INTERP_TYPE        = 'CHEBYSHEV';
-        CHEB_IMPL          = 'CHEBFUN';
-        CHEB_IMPL          = 'IAS';
-        CHEB_KIND          = 2;
+        %INTERP_TYPE        = 'CHEBYSHEV';
+        %CHEB_IMPL          = 'CHEBFUN';
+        %CHEB_IMPL          = 'IAS';
+        %CHEB_KIND          = 2;
 
         % TEMPORAL RESOLUTION
         TINIT   = 0;
@@ -92,23 +92,29 @@ function main()
         RES_PER_NODE       = 3;    % Resolution per Node
         ADAPTIVE           = false;
         INTERP_TYPE        = 'cubic';
-        INTERP_TYPE        = 'CHEBYSHEV';
-        CHEB_IMPL          = 'CHEBFUN';
-        CHEB_IMPL          = 'IAS';
-        CHEB_KIND          = 2;
+        %INTERP_TYPE        = 'CHEBYSHEV';
+        %CHEB_IMPL          = 'CHEBFUN';
+        %CHEB_IMPL          = 'IAS';
+        %CHEB_KIND          = 2;
 
         % TEMPORAL RESOLUTION
         TINIT   = 0;
         tfinal  = 2*pi;
 
-        max_level_list = [4 5 6];
-        tn_init = 100;
-        for lvl =1:size(max_level_list,2)
-            MAX_LEVEL = max_level_list(lvl);   % Maximum depth
-            TN        = tn_init*2^(lvl-1);
-            DT        = tfinal/TN;
-            % RUN
-            advect();
-        end
+        %max_level_list = [4 5 6];
+        max_level_list = [3 4 5];
+        tn_init = 200;
+        
+        MAX_LEVEL = 3;
+        TN        = tn_init;
+        DT        = tfinal/TN;
+        advect();
+        %for lvl =1:size(max_level_list,2)
+        %    MAX_LEVEL = max_level_list(lvl);   % Maximum depth
+        %    TN        = tn_init*2^(lvl-1);
+        %    DT        = tfinal/TN;
+        %    % RUN
+        %    advect();
+        %end
     end
 end

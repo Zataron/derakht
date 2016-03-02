@@ -57,13 +57,14 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
     % v = qdata.collapse(vmcells);
 
     %fconc_interp    = fconc_exact;
-    fconc_interp    = @conc_interp;
+    %fconc_interp    = @conc_interp;
+    fconc_interp     = @conc_interp_qmsl;
 
     %fvel_interp     = fvel_exact;
     %fvel_interp     = @vel_interp;
     fvel_interp     = @vel_interp_time_independent;
 
-    %fsemilag        = fconc_exact;
+    %fsemilag        = fconc_exact;   
     fsemilag        = @semilag;
 
 
@@ -222,6 +223,17 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
     end
 
     %/* ************************************************** */
+    %function val = QMSL(tdummy,x,y,z)
+    %    if VERBOSE, fprintf('--> calling QMSL function!\n'); end
+    %    val = semilag_rk2(x,y,z,fconc_interp,fvel_interp,t);
+    %end
+
+    %/* ************************************************** */
+    %function valq = quasi_monotone_adjust(tdummy,x,y,z,valq)
+    %    valq = qdata.QMSL_adjust(c,x,y,z,valq,INTERP_TYPE);        
+    %end    
+
+    %/* ************************************************** */
     function val = semilag(tdummy,x,y,z)
         if VERBOSE, fprintf('--> calling semilag function!\n'); end
         val = semilag_rk2(x,y,z,fconc_interp,fvel_interp,t);
@@ -231,14 +243,21 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
     function ci = conc_interp(tq,xq,yq,zq)
         ci = qdata.interp_points(c,xq,yq,zq,INTERP_TYPE);
         ci = conc_out(ci,xq,yq,zq);
+    end
 
-        function cq = conc_out(cq,xq,yq,zq)
+    %/* ************************************************** */
+    function ci = conc_interp_qmsl(tq,xq,yq,zq)
+        ci = qdata.interp_points_qmsl(c,xq,yq,zq,INTERP_TYPE);
+        ci = conc_out(ci,xq,yq,zq);
+    end
+
+    %/* ************************************************** */
+    function cq = conc_out(cq,xq,yq,zq)
         % OUTSIDE THE SIMULATION DOMAIN
         %ce = fconc_exact(tq,xq,yq,zq);
-            ce = zeros(size(cq));
-            out = xq<0 | xq>1  | yq<0 | yq>1 | zq<0 | zq>1;
-            cq(out) = ce(out);
-        end
+        ce = zeros(size(cq));
+        out = xq<0 | xq>1  | yq<0 | yq>1 | zq<0 | zq>1;
+        cq(out) = ce(out);
     end
 
     %/* ************************************************** */

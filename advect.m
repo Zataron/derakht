@@ -32,6 +32,7 @@ function advect()
 
     % MAIN SCRIPT
     fconc_exact   = @get_gaussian;
+    %fconc_exact   = @get_simple_function;
     fvel_exact    = @get_vel_exact;
     fvelx_exact   = @get_velx_exact;
     fvely_exact   = @get_vely_exact;
@@ -64,6 +65,10 @@ function advect()
     qdata.init_data(cinit,fconc_exact,RES_PER_NODE,TINIT);
 
     plot_tree(cinit,0);
+    
+    % calculate and output mass
+    I = qdata.get_mass(cinit, INTERP_TYPE);
+    fprintf('mass: %f \n',I);
 
     % COMPUTE INITIAL TREES' ERRORS
     err = zeros(TN+1,2);
@@ -84,6 +89,15 @@ function advect()
         ts_time = tic;
         cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact);
         toc(ts_time)
+        
+        % calculate and output mass
+        I = qdata.get_mass(cnext, INTERP_TYPE);
+        fprintf('mass: %f \n',I);  
+        
+        % calculate and output e_diss and e_disp
+        [e1,e2] = qdata.get_interpolation_errors(cnext, fconc_exact, t(VNEXTSTEP));
+        fprintf('e_diss: %e \n',e1);
+        fprintf('e_disp: %e \n',e2);
 
         % PLOT THE RESULT
         plot_tree(cnext,tstep);
@@ -211,6 +225,12 @@ end
 %/* ************************************************** */
 function value = get_zalesak(t,x,y,z)
     value = zalesak(x, y);
+end
+
+%/* ************************************************** */
+function value = get_simple_function(t,x,y,z)
+    %some simple function to test get_mass() correctness
+    value = x.^2 + y.^2;
 end
 
 %/* ************************************************** */
