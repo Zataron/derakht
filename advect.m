@@ -33,6 +33,8 @@ function advect()
     % MAIN SCRIPT
     %fconc_exact   = @get_gaussian;
     fconc_exact   = @get_zalesak;
+    %fconc_exact   = @get_cylinder_box;
+    %fconc_exact   = @get_inviscid_burgers;
     fvel_exact    = @get_vel_exact;
     fvelx_exact   = @get_velx_exact;
     fvely_exact   = @get_vely_exact;
@@ -49,7 +51,7 @@ function advect()
     t = TINIT + [-DT 0 DT 2*DT];
 
     % CONSTRUCT AND INIT THE TREES (VELOCITY AND CONCENTRAITION FEILDS)
-
+    
     % VELOCITY (TIME-INDEPENDENT)
     u = qtree;
     u.insert_function(fvelx_exact,@do_refine,t(2));
@@ -64,8 +66,8 @@ function advect()
     cinit.insert_function(fconc_exact,@do_refine,TINIT);
     qdata.init_data(cinit,fconc_exact,RES_PER_NODE,TINIT);
 
-    plot_tree(cinit,0);
-
+    plot_tree(cinit,0); 
+    
     % COMPUTE INITIAL TREES' ERRORS
     err = zeros(TN+1,2);
     err(1,1)= 0;
@@ -104,13 +106,22 @@ function advect()
     
     % calculate and output mass ratio
     I = qdata.get_mass_ratio(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
-    fprintf('mass ratio: %f \n',I);     
+    fprintf('mass ratio: %f \n',I);    
+    I = qdata.get_mass(cnext, INTERP_TYPE);
+    fprintf('mass of resulting tree: %f \n',I);
+    I = qdata.get_mass(cinit, INTERP_TYPE);
+    fprintf('mass of initial tree: %f \n',I);    
     
     % calculate and output e_diss and e_disp
-    [e1,e2] = qdata.get_interpolation_errors(cnext, fconc_exact, t(VCURTSTEP));
+    [e1,e2,e3,e4] = qdata.get_interpolation_errors(cnext, fconc_exact, t(VCURTSTEP));
     fprintf('e_diss: %e \n',e1);
-    fprintf('e_disp: %e \n',e2);    
-
+    fprintf('e_disp: %e \n',e2);  
+    fprintf('e_sum: %e \n',e3);  
+    fprintf('e_total: %e \n',e4);  
+    
+    %plot cross-section    
+    qdata.draw_cross_section(cnext,0.5,'cross_Y');
+    
     % SAVE THE RESULTS
     frep = fopen([OUTPUT_DIR,'report.dat'],'a');
     % fprintf(frep,'%12s %5s %5s %10s %10s %10s %5s %12s %12s\n', ...
@@ -221,6 +232,34 @@ end
 %/* ************************************************** */
 function value = get_zalesak(t,x,y,z)
     value = zalesak(x, y);
+end
+
+%/* ************************************************** */
+function value = get_cylinder_box(t,x,y,z)
+    xi = 0.0;
+    xf = 1.0;
+    domain_length = xf - xi;
+    xcenter = (xf + xi) / 2;
+    ycenter = xcenter;
+    value = zeros(size(x));
+    %box
+    box_length = 0.5*domain_length;
+    box_height = 2;    
+    bmask = x <= xcenter+box_length/2 & x >= xcenter-box_length/2 & y <= ycenter+box_length/2 & y >= ycenter-box_length/2;
+    value(bmask) = box_height;
+    %cylinder
+    cylinder_height = box_height + 2;
+    cylinder_radius = 0.1*box_length;
+    xd = x - xcenter;
+    yd = y - ycenter;
+    dist = sqrt(xd.*xd + yd.*yd);
+    cmask = dist <= cylinder_radius;
+    value(cmask) = cylinder_height;    
+end
+
+%/* ************************************************** */
+function value = get_inviscid_burgers(t,x,y,z)
+    value = 0.25 + 0.5*sin(0.5*pi*(x+y));
 end
 
 %/* ************************************************** */

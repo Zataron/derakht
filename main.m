@@ -89,9 +89,9 @@ function main()
 
         % SPATIOAL RESOLUTION
         MAX_ERROR_PER_NODE = 1e-30; % Error per box
-        RES_PER_NODE       = 3;    % Resolution per Node
+        RES_PER_NODE       = 100;    % Resolution per Node
         ADAPTIVE           = false;
-        INTERP_TYPE        = 'cubic';
+        INTERP_TYPE        = 'spline';
         %INTERP_TYPE        = 'CHEBYSHEV';
         %CHEB_IMPL          = 'CHEBFUN';
         %CHEB_IMPL          = 'IAS';
@@ -105,7 +105,7 @@ function main()
         max_level_list = [3 4 5];
         tn_init = 100;
         
-        MAX_LEVEL = 3;
+        MAX_LEVEL = 0;
         TN        = tn_init;
         DT        = tfinal/TN;
         advect();
