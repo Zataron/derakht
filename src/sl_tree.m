@@ -15,6 +15,7 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
     global RES_PER_NODE;
     global VERBOSE;
     global INTERP_TYPE;
+    global ENABLE_CQMSL;
 
     VPREVTSTEP  = 1;
     VCURTSTEP   = 2;
@@ -56,9 +57,12 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
     % u = qdata.collapse(umcells);
     % v = qdata.collapse(vmcells);
 
-    %fconc_interp    = fconc_exact;
-    %fconc_interp    = @conc_interp;
-    fconc_interp     = @conc_interp_qmsl;
+    if ~ENABLE_CQMSL
+        %fconc_interp    = fconc_exact;
+        fconc_interp     = @conc_interp;
+    else
+        fconc_interp     = @conc_interp_cqmsl;
+    end
 
     %fvel_interp     = fvel_exact;
     %fvel_interp     = @vel_interp;
@@ -83,14 +87,28 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
 
     fprintf('--> SL: ');
     sl_time = tic;
-    qdata.init_data(cnext,fsemilag,RES_PER_NODE);
+    if ENABLE_CQMSL
+        qdata.init_data_alt(cnext,fsemilag,RES_PER_NODE);
+    else
+        qdata.init_data(cnext,fsemilag,RES_PER_NODE);
+    end
     fprintf('%f\n', toc(sl_time))
 
     global ADAPTIVE
     if ADAPTIVE
         fprintf('--> Refine: ');
         rt_time = tic;
-        refine_tree(cnext, fdo_refine);
+        if ~ENABLE_CQMSL
+            refine_tree(cnext, fdo_refine);
+        else
+            % CQMSL: can't go leaf by leaf
+            % => the QMSL interpolation must be used for errors
+            % TODO: change this somehow?
+            fconc_interp = @conc_interp;
+            refine_tree(cnext, fdo_refine);
+            fconc_interp = @conc_interp_cqmsl;
+            qdata.init_data_alt(cnext,fsemilag,RES_PER_NODE);   
+        end
         fprintf('%f\n',toc(rt_time))
     end
 
@@ -114,7 +132,9 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
                                 node.level,node.anchor(1),node.anchor(2));
                     end
                     coarsen(node)
-                    qdata.set_node_fn(node, fsemilag, RES_PER_NODE, t);
+                    if ~ENABLE_CQMSL
+                        qdata.set_node_fn(node, fsemilag, RES_PER_NODE, t);
+                    end
                     do_coarsen = true;
                     % do_coarsen = false;
                     return;
@@ -131,9 +151,11 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
                             node.level,node.anchor(1),node.anchor(2));
                 end
                 refine(node);
-                for kcnt=1:4,
-                    qdata.set_node_fn(node.kids{kcnt}, fsemilag, RES_PER_NODE, t);
-                end;
+                if ~ENABLE_CQMSL
+                    for kcnt=1:4,
+                        qdata.set_node_fn(node.kids{kcnt}, fsemilag, RES_PER_NODE, t);
+                    end;
+                end
                 for kcnt=1:4, refine_tree(node.kids{kcnt},fvisit); end;
                 do_coarsen = false;
                 return;
@@ -143,7 +165,7 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
                 return;
             end
         end
-
+        
     end
 
     % %/* ************************************************** */
@@ -245,9 +267,33 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
     end
 
     %/* ************************************************** */
-    function ci = conc_interp_qmsl(tq,xq,yq,zq)
-        ci = qdata.interp_points_qmsl(c,xq,yq,zq,INTERP_TYPE);
-        ci = conc_out(ci,xq,yq,zq);
+    function ci = conc_interp_cqmsl(tq,xq,yq,zq)
+        %TODO: only works for regular grid
+        %TODO: could be optimized since x,y is already calculated in
+        %      init_data_alt
+        %TODO: include z
+        %get x,y values and mass S for each grid point
+        src_leaves  = cnext.leaves();
+        n_gridpoints = length(src_leaves)*(RES_PER_NODE+1)*(RES_PER_NODE+1);
+        xr = zeros(n_gridpoints,1);
+        yr = xr;
+        S = xr;  
+        pos = 1; 
+        for src_lvcnt =1:length(src_leaves)
+            src_leaf = src_leaves{src_lvcnt};
+            [xxr,yyr,zzr,dx,dy,dz] = src_leaf.mesh(RES_PER_NODE);
+            xr(pos:pos+numel(xxr)-1, 1) = xxr(:);
+            yr(pos:pos+numel(xxr)-1, 1) = yyr(:);
+            S_leaf = ones(size(xxr))*dx*dy;
+            S_leaf(end:end,1:end) = 0;
+            S_leaf(1:end,end:end) = 0;
+            S(pos:pos+numel(xxr)-1, 1) = S_leaf(:);
+            pos = pos + numel(xxr);            
+        end
+            
+        %call cqmsl interpolation
+        ci = qdata.interp_points_cqmsl(c,xq,yq,zq,xr,yr,S,INTERP_TYPE,fconc_exact);
+        ci = conc_out(ci,xq,yq,zq);               
     end
 
     %/* ************************************************** */

@@ -30,7 +30,30 @@ classdef qdata < handle
                 cleaf = cleaves{lvcnt};
                 qdata.set_node_fn(cleaf, func, resPerNode, t);
             end
-        end
+        end              
+        
+        %/* ************************************************** */
+        function init_data_alt(tree, func, resPerNode, t)
+        % Initializes the values of all leaf octants based on the
+        % input function values and grid resolution per node
+        % computes all at once rather than going leaf by leaf
+        % TODO: only works for regular grid
+        % TODO: get zz from somewhere
+            if nargin < 4, t = 0; end;
+            [xx,yy] = qdata.grid_points_alt(tree);
+            zz = zeros(size(xx));            
+            vv = func(t,xx,yy,zz);
+            
+            pos = 1;
+            points_per_node = (resPerNode+1)*(resPerNode+1);
+            cleaves = tree.leaves();
+            for lvcnt = 1:length(cleaves)
+                cleaf = cleaves{lvcnt};
+                v = reshape(vv(pos:pos+points_per_node-1, 1),[resPerNode+1,resPerNode+1]);
+                qdata.set_node_val(cleaf, v, resPerNode);
+                pos = pos + points_per_node;
+            end
+        end          
 
         %/* ************************************************** */
         function interp_tree(src_tree, dst_tree)
@@ -47,45 +70,11 @@ classdef qdata < handle
                 qdata.set_node_val(dst_leaf, tmpval, RES_PER_NODE);
             end
         end
-
+        
         %/* ************************************************** */
         function valq = interp_points(src_tree,xq,yq,zq,INTERP_TYPE)
             global RES_PER_NODE;
-            src_leaves  = src_tree.leaves();
-            valq = zeros(size(xq));
-            for src_lvcnt =1:length(src_leaves)
-                src_leaf = src_leaves{src_lvcnt};
-                indices = qdata.points_in_node(src_leaf, xq, yq);
-                if ~any(any(indices)), continue; end;
-                xx = xq(indices);
-                yy = yq(indices);
-                if strcmp(INTERP_TYPE, 'CHEBYSHEV')
-                    global CHEB_IMPL
-                    if strcmp(CHEB_IMPL, 'IAS')
-                        vv = zeros(size(xx));
-                        w = src_leaf.data.values;
-                        [xmin,xmax,ymin,ymax] = src_leaf.corners;
-                        xs = (xx - xmin)*2/(xmax-xmin)-1.0;
-                        ys = (yy - ymin)*2/(ymax-ymin)-1.0;
-                        for xindx =1:size(xx,1)
-                            vv(xindx) =  cheb.chebeval2(w, xs(xindx), ys(xindx));
-                        end
-                    elseif strcmp(CHEB_IMPL, 'CHEBFUN')
-                        w = src_leaf.data.values;
-                        vv = w(xx,yy);
-                    end
-                else
-                    [xxr,yyr,zzr,dx,dy,dz] = src_leaf.mesh(RES_PER_NODE);
-                    interp_data = src_leaf.data.values;
-                    vv = interp2(xxr,yyr,interp_data,xx,yy, INTERP_TYPE);
-                end
-                valq(indices) = vv;
-            end
-        end
-        
-        %/* ************************************************** */
-        function valq = interp_points_qmsl(src_tree,xq,yq,zq,INTERP_TYPE)
-            global RES_PER_NODE;
+            global ENABLE_QMSL;
             src_leaves  = src_tree.leaves();
             valq = zeros(size(xq));
             for src_lvcnt =1:length(src_leaves)
@@ -116,45 +105,51 @@ classdef qdata < handle
                     vv = interp2(xxr,yyr,interp_data,xx,yy, INTERP_TYPE);
                     
                     % QMSL adjustment
-                    [xmin,xmax,ymin,ymax] = corners(src_leaf);  
-                    for i = 1:length(indices)
-                        % get values at the corners of the box around current x,y
-                        x = xx(i);
-                        y = yy(i);
-                        if (x == xmax || y == ymax)
-                            continue;
-                        end;
-                        x_index = 1+floor((x-xmin)/dx);
-                        y_index = 1+floor((y-ymin)/dy);
-                        
-                        %debug output
-                        %fprintf('x = %f, y = %f, xmin = %f, xmax = %f, ymin = %f, ymax = %f\n',x,y,xmin,xmax,ymin,ymax);
-                        %fprintf('y_index: %f, x_index: %f, data dimensions: %f, %f\n',y_index,x_index,size(interp_data,1),size(interp_data,2));
-                        M = interp_data(y_index:y_index+1, x_index:x_index+1);
-                        
-                        % get min, max and adjust
-                        upper = max(M(:));
-                        lower = min(M(:));
-                        val = vv(i);
-                        if val < lower
-                            vv(i) = lower;
-                        elseif val > upper
-                            vv(i) = upper;
-                        end
-                    end                                       
+                    if ENABLE_QMSL
+                        [xmin,xmax,ymin,ymax] = corners(src_leaf);  
+                        for i = 1:length(indices)
+                            % get values at the corners of the box around current x,y
+                            x = xx(i);
+                            y = yy(i);
+                            if (x == xmax || y == ymax)
+                                continue;
+                            end;
+                            x_index = 1+floor((x-xmin)/dx);
+                            y_index = 1+floor((y-ymin)/dy);
+
+                            %debug output
+                            %fprintf('x = %f, y = %f, xmin = %f, xmax = %f, ymin = %f, ymax = %f\n',x,y,xmin,xmax,ymin,ymax);
+                            %fprintf('y_index: %f, x_index: %f, data dimensions: %f, %f\n',y_index,x_index,size(interp_data,1),size(interp_data,2));
+                            M = interp_data(y_index:y_index+1, x_index:x_index+1);
+
+                            % get min, max and adjust
+                            upper = max(M(:));
+                            lower = min(M(:));
+                            val = vv(i);
+                            if val < lower
+                                vv(i) = lower;
+                            elseif val > upper
+                                vv(i) = upper;
+                            end
+                        end   
+                    end
                 end
                 valq(indices) = vv;
             end
-        end
+        end            
         
         %/* ************************************************** */
-        function valq = interp_points_cqmsl(src_tree,xq,yq,zq,xr,yr,zr,INTERP_TYPE,fexact)
+        function valq = interp_points_cqmsl(src_tree,xq,yq,zq,xr,yr,S,INTERP_TYPE,fexact)
+            %NOTE: xq,yq must be column vectors
+            %TODO: merge with interp_points?
+            %TODO: CQMSL only works for regular grid
             global RES_PER_NODE;
-            src_leaves  = src_tree.leaves();
             valq = zeros(size(xq));
             valq_low = valq;
-            valq_high = valq;
-            for src_lvcnt =1:length(src_leaves)
+            valq_high = valq;             
+            src_leaves = src_tree.leaves();
+            for src_lvcnt =1:length(src_leaves)               
+                %get interpolated data for this leaf   
                 src_leaf = src_leaves{src_lvcnt};
                 indices = qdata.points_in_node(src_leaf, xq, yq);
                 if ~any(any(indices)), continue; end;
@@ -181,7 +176,7 @@ classdef qdata < handle
                     interp_data = src_leaf.data.values;
                     vv = interp2(xxr,yyr,interp_data,xx,yy, INTERP_TYPE);
                     valq_high(indices) = vv;
-                    valq_low(indices) = interp2(xxr,yyr,interp_data,xx,yy, 'linear'); % TODO: Lagrange polynomial interpolation?
+                    valq_low(indices) = interp2(xxr,yyr,interp_data,xx,yy, 'linear');
                     
                     % QMSL stage
                     [xmin,xmax,ymin,ymax] = corners(src_leaf);  
@@ -212,43 +207,28 @@ classdef qdata < handle
             end
             
             % Conservation stage
-            % TODO: won't work if going leaf by leaf, because mass is only
-            %       constant for the whole domain!
-            % Note: valq contains the QMSL solution at this point
+            % NOTE: valq contains the QMSL solution at this point
             if strcmp(INTERP_TYPE, 'CHEBYSHEV')
                 return;
             end
-            %step 1
-            dxr = xr;
-            dxr(1:end,1:end-1) = xr(1:end,2:end);
-            dxr = dxr - xr;
-            dyr = yr;
-            dyr(1:end-1,1:end) = yy(2:end,1:end); %note: assumes that the top row contains ymin
-            dyr = dyr - yr;
-            valq_exact = fexact(0,xr,yr,0);
-            mass_exact = sum(sum(valq_exact.*dxr.*dyr));
+            %step 1: merged with step 3
             %step 2: QMSL stage (done above)
-            %step 3
-            mass_qmsl = sum(sum(valq.*dxr.*dyr));
-            mass_difference = mass_qmsl - mass_exact;
+            %step 3: calculate mass difference                 
+            valq_exact = fexact(0,xr,yr,0); %TODO: get zr             
+            mass_difference = sum(sum(S.*(valq - valq_exact)));
             if mass_difference == 0
                 return;
             end 
-            %step 4
+            %step 4: calculate weights
             weight = max(0,sign(mass_difference)*((valq_high-valq_low).^3));
             if ~any(any(weight))
                 return;
             end
-            %step 5
-            lambda = mass_difference/sum(sum(weight.*dxr.*dyr));
-            %step 6
-            valq = valq - lambda*weight; %TODO: not valq - ... ?            
+            %step 5: calculate lambda
+            lambda = mass_difference/sum(sum(weight.*S));
+            %step 6: calculate new valq
+            valq = valq - lambda*weight;          
         end        
-        
-        %/* ************************************************** */
-        function valq = cqmsl_adjust(src_tree,xq,yq,zq,xr,yr,zr,INTERP_TYPE,fexact)
-            
-        end
 
         %/* ************************************************** */
         function max_err = compute_error(tree, fexact, t,INTERP_TYPE)
@@ -270,6 +250,7 @@ classdef qdata < handle
                 zzcc = zzc(1:end-1,1:end-1);
 
                 vale = fexact(t,xxcc,yycc,zzcc);
+                %TODO: different interp_points for cqmsl?
                 valt = qdata.interp_points(leaf,xxcc,yycc,zzcc,INTERP_TYPE);
 
                 diff = vale - valt;
@@ -380,6 +361,23 @@ classdef qdata < handle
                 yy = [yy; yr(:)];
             end
         end
+        
+        %/* ************************************************** */
+        function [xx,yy,vv] = grid_points_alt(tree)
+            % also returns grid points of leaves without data
+            % TODO: merge with grid_points()?
+            global INTERP_TYPE;
+            global RES_PER_NODE;
+            xx = []; yy = [];
+            cleaves = tree.leaves();
+            for lvcnt = 1:length(cleaves)
+                cleaf = cleaves{lvcnt};
+                %if isempty(cleaf.data), continue; end;
+                [xr,yr,zr,dx,dy,dz] = cleaf.mesh(RES_PER_NODE,INTERP_TYPE);
+                xx = [xx; xr(:)];
+                yy = [yy; yr(:)];
+            end
+        end         
 
         %/* ************************************************** */
         function [vv] = grid_data(tree)
@@ -458,11 +456,10 @@ classdef qdata < handle
                 y = yyr(1:end,1);
                 val = val + trapz(y,trapz(x,interp_data,2));
             end
-        end   
+        end            
         
         %/* ************************************************** */
         function val = get_mass_ratio(src_tree,fexact,t,INTERP_TYPE)
-            % TODO: use cinit instead of fexact?
             if strcmp(INTERP_TYPE, 'CHEBYSHEV')
                 % currently only regular grid is supported!
                 val = 0;
@@ -490,7 +487,7 @@ classdef qdata < handle
             if val_exact ~= 0
                 val = val_interp/val_exact;
             end
-        end          
+        end   
         
         %/* ************************************************** */
         function val = get_mass_squared(src_tree,INTERP_TYPE)
@@ -555,7 +552,7 @@ classdef qdata < handle
             real_values = fexact(t,X,Y,0);
             
             %for debugging: save the results
-            save('testresults/test_results_sl10.mat','X','Y','interp_values','real_values');
+            save('testresults/test_results_sl_7.mat','X','Y','interp_values','real_values');
 
             %get covariance, standard deviations, means, correlation coeff
             cv = cov(real_values, interp_values);

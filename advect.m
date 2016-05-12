@@ -106,7 +106,7 @@ function advect()
     
     % calculate and output mass ratio
     I = qdata.get_mass_ratio(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
-    fprintf('mass ratio: %f \n',I);    
+    fprintf('mass ratio: %f \n',I);     
     I = qdata.get_mass(cnext, INTERP_TYPE);
     fprintf('mass of resulting tree: %f \n',I);
     I = qdata.get_mass(cinit, INTERP_TYPE);
