@@ -97,10 +97,30 @@ function advect()
         err(tstep+1,2) = e;
         format longE
         disp(['TN: ', num2str(tstep), '   Error: ', num2str(e,'%12.2e')]);
+        
+        % SAVE ERRORS AFTER FULL REVOLUTION
+        %if mod(tstep,100) == 0
+        %    % calculate and output mass ratio
+        %    I = qdata.get_mass_ratio(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
+        %    fprintf('mass ratio: %f \n',I);     
+        %    I2 = qdata.get_mass_ratio_squared(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
+        %    fprintf('mass ratio squared: %f \n',I2);                
+
+            % calculate and output e_diss and e_disp
+        %    [e1,e2,e3,e4] = qdata.get_interpolation_errors(cnext, fconc_exact, t(VCURTSTEP));
+        %    fprintf('e_diss: %e \n',e1);
+        %    fprintf('e_disp: %e \n',e2);              
+            
+        %    %revnum = sprintf('%i',tstep/100);
+        %    %[X,Y] = qdata.grid_points(cnext);
+        %    %[interp_values] = qdata.grid_data(cnext);    
+        %    %real_values = fconc_exact(t(VCURTSTEP),X,Y,0);            
+        %    %save(['testresults/test_results_cqmsl_rev',revnum,'.mat'],'e','e1','e2','I','I2','X','Y','interp_values','real_values');           
+        %end        
 
         % PREPARE FOR THE NEXT STEP
         c = cnext;
-        t = t + DT;
+        t = t + DT;       
     end % for time step
     tot_elapsed_time = toc(main_time);
     

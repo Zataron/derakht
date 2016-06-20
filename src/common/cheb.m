@@ -75,6 +75,33 @@ classdef cheb < handle
                 w(j,:) = (reshape(w_(j,:),1,[])*Tx)*2/Nx;
             end
         end
+        
+        %/* ************************************************** */
+        function fval = filterfun(ord,x)
+            if ord == 1
+                %first order: Lanczos filter
+                fval = sin(pi*x)./(pi*x);
+                fval(x == 0) = 1;       
+            else
+                %second order: raised cosine
+                fval = 0.5*(1+cos(pi*x));
+            end
+        end
+        
+        %/* ************************************************** */
+        function filter = chebfilter(N)
+            %indices from -N/2 to N/2
+            bot = -floor((N-1)/2);
+            top = ceil((N-1)/2);           
+            
+            filter = cheb.filterfun(1, linspace(bot,top,N)/top);
+        end
+        
+        %/* ************************************************** */
+        function filter = chebfilter2(N)
+            %indices from 0 to N-1
+            filter = cheb.filterfun(1, linspace(0,N-1,N)/(N-1));
+        end        
 
         %/* ************************************************** */
         function [fval] = chebeval2(w,x,y)
@@ -95,6 +122,18 @@ classdef cheb < handle
                 w(:,end) = w(:,end)/2;
             end
 
+            %calculate filter and multiply with T
+             filter_x = cheb.chebfilter( n1 );
+%             filter_y = cheb.chebfilter2( n2 );
+             T_x = T_x .* repmat(filter_x, size(T_x,1), 1);
+%             T_y = T_y .* repmat(filter_y, size(T_y,1), 1);
+            
+            %NOTES:
+            %T_y: length(y) x n2
+            %T_x: length(x) x n1
+            %f_(:,i): length(y) x 1
+            %f_: length(y) x n1
+            %fval: length(y) x length(x)
             for i=1:size(w,2)
                 f_(:,i)=T_y*reshape(w(:,i),[],1);
             end

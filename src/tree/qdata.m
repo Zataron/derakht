@@ -487,7 +487,38 @@ classdef qdata < handle
             if val_exact ~= 0
                 val = val_interp/val_exact;
             end
-        end   
+        end 
+        
+        %/* ************************************************** */
+        function val = get_mass_ratio_squared(src_tree,fexact,t,INTERP_TYPE)
+            if strcmp(INTERP_TYPE, 'CHEBYSHEV')
+                % currently only regular grid is supported!
+                val = 0;
+                return;
+            end
+            global RES_PER_NODE;
+            src_leaves  = src_tree.leaves();
+            val_interp = 0;
+            % NOTE: val_exact uses exact function values, but the mass is
+            % still approximated using trapz()
+            val_exact = 0;
+            val = 0;
+            for src_lvcnt =1:length(src_leaves)
+                src_leaf = src_leaves{src_lvcnt};
+                interp_data = src_leaf.data.values;
+                [xxr,yyr,zzr,dx,dy,dz] = src_leaf.mesh(RES_PER_NODE);
+                
+                x = xxr(1,1:end);
+                y = yyr(1:end,1);
+                val_interp = val_interp + trapz(y,trapz(x,interp_data.^2,2));
+                
+                exact_data = fexact(t,xxr,yyr,zzr);
+                val_exact = val_exact + trapz(y,trapz(x,exact_data.^2,2));
+            end
+            if val_exact ~= 0
+                val = val_interp/val_exact;
+            end
+        end        
         
         %/* ************************************************** */
         function val = get_mass_squared(src_tree,INTERP_TYPE)
@@ -547,12 +578,56 @@ classdef qdata < handle
         
         %/* ************************************************** */
         function [e_diss, e_disp, e_sum, e_total] = get_interpolation_errors(src_tree, fexact, t)
+            global INTERP_TYPE;
+            if strcmp(INTERP_TYPE, 'CHEBYSHEV')
+                % CHEBYSHEV GRID
+                [X,Y] = qdata.grid_points(src_tree);
+                [interp_values] = qdata.grid_data(src_tree); 
+                real_values = fexact(t,X,Y,0);
+                %(deprecated) for now, we also save the values of a 100x100 grid
+%                 xr = linspace(0, 1, 99);
+%                 yr = linspace(0, 1, 99);
+%                 [xx, yy, zz] = meshgrid(xr,yr,1:1);
+%                 cs = qdata.interp_points(src_tree,xx,yy,zz,INTERP_TYPE);
+                %for now, we also save the values of a cross section
+                xx = linspace(0,1,99);
+                yy = 0.5;
+                xmin = 0;
+                xmax = 1;
+                ymin = 0;
+                ymax = 1;
+                %transform to interval [-1,1]
+                xs = (xx - xmin)*2/(xmax-xmin)-1.0;
+                ys = (yy - ymin)*2/(ymax-ymin)-1.0;    
+                %note: this is intended for a tree with 1 leaf!
+                w = src_tree.data.values;
+                cs = cheb.chebeval2(w,xs,ys);  
+                cs_exact = fexact(t,xx,yy,0);
+                save('testresults/test_results_cheb_3.mat','X','Y','interp_values','real_values','cs','cs_exact');
+                %3,6: no filter
+                %4: -n/2 to n/2, ord 1
+                %5: 0 to n-1, ord2, error = 7.64e-01
+                %7: 0 to n-1, ord2, only x filter, error = 7.53e-01
+                %8: 0 to n-1, ord2, only x filter, no interp_points, error = 7.53e-01
+                %9: 0 to n-1, ord2, no interp_points, error = 7.64e-01
+                %10: 0 to n-1, ord1, only x filter, no interp_points, error
+                %= 7.51e-01, best so far!
+                %11: -n/2 to n/2, ord1, only x filter, no interp_points,
+                %error = 1.10e+00
+                e_diss = 0;
+                e_disp = 0;
+                e_sum = 0;
+                e_total = 0;
+                return;
+            end
+            
+            % REGULAR GRID
             [X,Y] = qdata.grid_points(src_tree);
             [interp_values] = qdata.grid_data(src_tree);    
             real_values = fexact(t,X,Y,0);
             
             %for debugging: save the results
-            save('testresults/test_results_sl_7.mat','X','Y','interp_values','real_values');
+            save('testresults/test_results_cheb_1.mat','X','Y','interp_values','real_values');
 
             %get covariance, standard deviations, means, correlation coeff
             cv = cov(real_values, interp_values);
@@ -601,7 +676,7 @@ classdef qdata < handle
         %/* ************************************************** */
         function valq = QMSL_adjust(src_tree,xq,yq,zq,valq,INTERP_TYPE)
             % standalone version of the QMSL adjust, currently unused!
-            % procedure is implemented in interp_points_qmsl() instead
+            % procedure is implemented in interp_points instead
             if strcmp(INTERP_TYPE, 'CHEBYSHEV')
                 % currently only regular grid is supported!
                 return;

@@ -90,16 +90,16 @@ function main()
         VIS             = true;
 
         % SPATIOAL RESOLUTION
-        MAX_ERROR_PER_NODE = 1e-5; % Error per box
-        RES_PER_NODE       = 14;    % Resolution per Node
-        ADAPTIVE           = true;
-        INTERP_TYPE        = 'spline';
-        %INTERP_TYPE        = 'CHEBYSHEV';
+        MAX_ERROR_PER_NODE = 1e-30; % Error per box
+        RES_PER_NODE       = 59;    % Resolution per Node
+        ADAPTIVE           = false;
+        %INTERP_TYPE        = 'spline';
+        INTERP_TYPE        = 'CHEBYSHEV';
         %CHEB_IMPL          = 'CHEBFUN';
-        %CHEB_IMPL          = 'IAS';
-        %CHEB_KIND          = 2;
-        ENABLE_QMSL     = true;
-        ENABLE_CQMSL    = true;
+        CHEB_IMPL          = 'IAS';
+        CHEB_KIND          = 1;
+        ENABLE_QMSL     = false;
+        ENABLE_CQMSL    = false;
         
         % ensure CQMSL => QMSL
         if ENABLE_CQMSL
@@ -114,7 +114,7 @@ function main()
         max_level_list = [3 4 5];
         tn_init = 100;
         
-        MAX_LEVEL = 4;
+        MAX_LEVEL = 0;
         TN        = tn_init;
         DT        = tfinal/TN;
         advect();
