@@ -78,19 +78,26 @@ classdef cheb < handle
         
         %/* ************************************************** */
         function fval = filterfun(ord,x)
-            if ord == 1
+            if ord == 0
+                %0 order: Fejer
+                fval = 1-x;
+            elseif ord == 1
                 %first order: Lanczos filter
                 fval = sin(pi*x)./(pi*x);
                 fval(x == 0) = 1;       
-            else
+            elseif ord == 2
                 %second order: raised cosine
                 fval = 0.5*(1+cos(pi*x));
+            else
+                %construct a filter of order ord
+                a = -36.0437;
+                fval = exp(-a*x.^ord);
             end
         end
         
         %/* ************************************************** */
-        function filter = chebfilter(N)
-            %indices from -N/2 to N/2
+        function filter = chebfilter_shifted(N)
+            % indices from -N/2 to N/2
             bot = -floor((N-1)/2);
             top = ceil((N-1)/2);           
             
@@ -98,10 +105,18 @@ classdef cheb < handle
         end
         
         %/* ************************************************** */
-        function filter = chebfilter2(N)
-            %indices from 0 to N-1
+        function filter = chebfilter(N)
+            % indices from 0 to N-1
             filter = cheb.filterfun(1, linspace(0,N-1,N)/(N-1));
         end        
+        
+        function coeff = chebfilter2d(n,m,N)
+            tau = 0.03;
+            r = 0.3;
+            %coeff = 1 ./ ( 1 + tau*((n+m).^r).^2 );
+            
+            coeff = cheb.filterfun(1,(n+m)/(N-2));
+        end
 
         %/* ************************************************** */
         function [fval] = chebeval2(w,x,y)
@@ -109,6 +124,7 @@ classdef cheb < handle
         % approximation at a regular grid specified by X, Y. where
         % W is the corresponding chebyshev coefficients.
             global CHEB_KIND
+            global FILTER
             fval = zeros(length(y),length(x));
             n1 = size(w,2);
             n2 = size(w,1);
@@ -121,12 +137,26 @@ classdef cheb < handle
                 w(end,:) = w(end,:)/2;
                 w(:,end) = w(:,end)/2;
             end
+            
+            w_ = w;
 
-            %calculate filter and multiply with T
+            % 1-d filter in y-direction
+            if FILTER
+             filter_y = cheb.chebfilter( n2 );
+             T_y = T_y .* repmat(filter_y, size(T_y,1), 1);
+            end
+            
+            % 1-d filter in x-direction
+            if FILTER
              filter_x = cheb.chebfilter( n1 );
-%             filter_y = cheb.chebfilter2( n2 );
              T_x = T_x .* repmat(filter_x, size(T_x,1), 1);
-%             T_y = T_y .* repmat(filter_y, size(T_y,1), 1);
+            end
+            
+            % 2-d filter
+%             M_mat = repmat( linspace(0,n1-1,n1), n2, 1 );               % column indices
+%             N_mat = repmat( reshape(linspace(0,n2-1,n2),[],1), 1, n1 ); % row indices
+%             filter_coeffs = cheb.chebfilter2d(N_mat, M_mat, n1+n2);
+%             w_ = w_ .* filter_coeffs;
             
             %NOTES:
             %T_y: length(y) x n2
@@ -134,8 +164,8 @@ classdef cheb < handle
             %f_(:,i): length(y) x 1
             %f_: length(y) x n1
             %fval: length(y) x length(x)
-            for i=1:size(w,2)
-                f_(:,i)=T_y*reshape(w(:,i),[],1);
+            for i=1:size(w_,2)
+                f_(:,i)=T_y*reshape(w_(:,i),[],1);
             end
             for j=1:length(y)
                 fval(j,:)=T_x*reshape(f_(j,:),[],1);

@@ -25,6 +25,8 @@ function main()
     global DT;
 
     global OUTPUT_DIR;
+    global TESTNUM;     %TODO: remove later on
+    global FILTER;      %TODO: remove later on
 
     %ugrid_temporal_conv()
     ugrid_spatial_temporal_conv()
@@ -90,16 +92,18 @@ function main()
         VIS             = true;
 
         % SPATIOAL RESOLUTION
-        MAX_ERROR_PER_NODE = 1e-30; % Error per box
-        RES_PER_NODE       = 59;    % Resolution per Node
-        ADAPTIVE           = false;
+        MAX_ERROR_PER_NODE = 1e-5; % Error per box
+        RES_PER_NODE       = 10;    % Resolution per Node
+        ADAPTIVE           = true;
         %INTERP_TYPE        = 'spline';
         INTERP_TYPE        = 'CHEBYSHEV';
         %CHEB_IMPL          = 'CHEBFUN';
         CHEB_IMPL          = 'IAS';
-        CHEB_KIND          = 1;
+        CHEB_KIND          = 2;
         ENABLE_QMSL     = false;
         ENABLE_CQMSL    = false;
+        FILTER          = true;
+        TESTNUM         = 31;
         
         % ensure CQMSL => QMSL
         if ENABLE_CQMSL
@@ -114,7 +118,7 @@ function main()
         max_level_list = [3 4 5];
         tn_init = 100;
         
-        MAX_LEVEL = 0;
+        MAX_LEVEL = 3;
         TN        = tn_init;
         DT        = tfinal/TN;
         advect();

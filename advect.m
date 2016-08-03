@@ -24,6 +24,8 @@ function advect()
     global DT;
 
     global OUTPUT_DIR;
+    
+    global FILTER;
 
     VPREVTSTEP  = 1;
     VCURTSTEP   = 2;
@@ -75,7 +77,11 @@ function advect()
 
     % fprintf('DEPTH: %3d    Q: %3d   TN:%3d   DT:%8.2e\n', MAX_LEVEL, RES_PER_NODE, TN, DT);
     fprintf('INPUT ERROR: %12.2e\n', err(1,2));
-
+    
+    % DRAW CROSS SECTION ON INITIAL TREE
+    fprintf('Drawing cross section\n');
+    qdata.draw_cross_section(cinit,0.5,'cross_Y',1);
+    
     c = cinit;
     main_time = tic;
     for tstep =1:TN
@@ -116,7 +122,23 @@ function advect()
         %    %[interp_values] = qdata.grid_data(cnext);    
         %    %real_values = fconc_exact(t(VCURTSTEP),X,Y,0);            
         %    %save(['testresults/test_results_cqmsl_rev',revnum,'.mat'],'e','e1','e2','I','I2','X','Y','interp_values','real_values');           
-        %end        
+        %end      
+        
+        % DRAW CROSS SECTION AFTER EVERY 25 STEPS
+        if mod(tstep,25) == 0
+           st = tstep/25;
+           if mod(st,2) == 0 
+                if st == 4
+                    qdata.draw_cross_section(cnext,0.5,'cross_Y',st+1);
+                    FILTER = true;
+                    qdata.draw_cross_section(cnext,0.5,'cross_Y',st+2);
+                else
+                    qdata.draw_cross_section(cnext,0.5,'cross_Y',st+1);  
+                end
+           else
+                qdata.draw_cross_section(cnext,0.5,'cross_X',st+1);              
+           end
+        end        
 
         % PREPARE FOR THE NEXT STEP
         c = cnext;
@@ -139,8 +161,8 @@ function advect()
     fprintf('e_sum: %e \n',e3);  
     fprintf('e_total: %e \n',e4);  
     
-    %plot cross-section    
-    qdata.draw_cross_section(cnext,0.5,'cross_Y');
+    % plot final cross-section    
+    %qdata.draw_cross_section(cnext,0.5,'cross_Y');
     
     % SAVE THE RESULTS
     frep = fopen([OUTPUT_DIR,'report.dat'],'a');
@@ -195,6 +217,28 @@ function advect()
     % delete(hRect);
         [val] = tree_do_refine_modified(node,func,MAX_ERROR_PER_NODE,MAX_LEVEL,RES_PER_NODE,t);
     end
+end
+
+function test_interpolate(fexact)
+    % TODO: for testing only, remove later on!
+    global RES_PER_NODE;
+    %get exact values
+    [xx, yy] = cheb.chebnodes2(RES_PER_NODE, RES_PER_NODE, 0, 1, 0, 1);   
+    zz = zeros(size(xx));
+    val = fexact(0,xx,yy,zz);
+
+    %calculate coeffs
+    [w] = cheb.chebcoeff(val);
+
+    %interpolate along cross section
+    ix = linspace(0,1,99)*2 - 1.0;
+    iy = 0.5*2 - 1.0;
+    iv = cheb.chebeval2(w,ix,iy);
+    
+    %draw cross section
+    figure(2)
+    plot(ix, iv)
+    grid on    
 end
 
 %/* ************************************************** */
