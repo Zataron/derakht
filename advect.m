@@ -26,6 +26,8 @@ function advect()
     global OUTPUT_DIR;
     
     global FILTER;
+    
+    global T0_MASS;
 
     VPREVTSTEP  = 1;
     VCURTSTEP   = 2;
@@ -34,8 +36,8 @@ function advect()
 
     % MAIN SCRIPT
     %fconc_exact   = @get_gaussian;
-    fconc_exact   = @get_zalesak;
-    %fconc_exact   = @get_cylinder_box;
+    %fconc_exact   = @get_zalesak;
+    fconc_exact   = @get_cylinder_box;
     %fconc_exact   = @get_inviscid_burgers;
     fvel_exact    = @get_vel_exact;
     fvelx_exact   = @get_velx_exact;
@@ -82,6 +84,9 @@ function advect()
     fprintf('Drawing cross section\n');
     qdata.draw_cross_section(cinit,0.5,'cross_Y',1);
     
+    % COMPUTE INITIAL TREE'S MASS
+    T0_MASS = qdata.get_mass(cinit, INTERP_TYPE);
+    
     c = cinit;
     main_time = tic;
     for tstep =1:TN
@@ -107,9 +112,9 @@ function advect()
         % SAVE ERRORS AFTER FULL REVOLUTION
         %if mod(tstep,100) == 0
         %    % calculate and output mass ratio
-        %    I = qdata.get_mass_ratio(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
+        %    I = qdata.get_mass(cnext, INTERP_TYPE)/T0_MASS;
         %    fprintf('mass ratio: %f \n',I);     
-        %    I2 = qdata.get_mass_ratio_squared(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
+        %    I2 = qdata.get_mass_squared(cnext, INTERP_TYPE) / qdata.get_mass_squared(cinit, INTERP_TYPE);
         %    fprintf('mass ratio squared: %f \n',I2);                
 
             % calculate and output e_diss and e_disp
@@ -124,21 +129,23 @@ function advect()
         %    %save(['testresults/test_results_cqmsl_rev',revnum,'.mat'],'e','e1','e2','I','I2','X','Y','interp_values','real_values');           
         %end      
         
-        % DRAW CROSS SECTION AFTER EVERY 25 STEPS
-        if mod(tstep,25) == 0
-           st = tstep/25;
-           if mod(st,2) == 0 
-                if st == 4
-                    qdata.draw_cross_section(cnext,0.5,'cross_Y',st+1);
-                    FILTER = true;
-                    qdata.draw_cross_section(cnext,0.5,'cross_Y',st+2);
-                else
-                    qdata.draw_cross_section(cnext,0.5,'cross_Y',st+1);  
-                end
-           else
-                qdata.draw_cross_section(cnext,0.5,'cross_X',st+1);              
-           end
-        end        
+        % CHEBYSHEV: DRAW CROSS SECTION AFTER EVERY 25 STEPS
+%         if strcmp(INTERP_TYPE, 'CHEBYSHEV')
+%             if mod(tstep,25) == 0
+%                st = tstep/25;
+%                if mod(st,2) == 0 
+%                     if st == 4
+%                         qdata.draw_cross_section(cnext,0.5,'cross_Y',st+1);
+%                         FILTER = true;
+%                         qdata.draw_cross_section(cnext,0.5,'cross_Y',st+2);
+%                     else
+%                         qdata.draw_cross_section(cnext,0.5,'cross_Y',st+1);  
+%                     end
+%                else
+%                     qdata.draw_cross_section(cnext,0.5,'cross_X',st+1);              
+%                end
+%             end   
+%         end
 
         % PREPARE FOR THE NEXT STEP
         c = cnext;
@@ -147,12 +154,13 @@ function advect()
     tot_elapsed_time = toc(main_time);
     
     % calculate and output mass ratio
-    I = qdata.get_mass_ratio(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
-    fprintf('mass ratio: %f \n',I);     
+    %I = qdata.get_mass_ratio(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
+    %fprintf('mass ratio 1: %f \n',I);  
     I = qdata.get_mass(cnext, INTERP_TYPE);
     fprintf('mass of resulting tree: %f \n',I);
-    I = qdata.get_mass(cinit, INTERP_TYPE);
-    fprintf('mass of initial tree: %f \n',I);    
+    I = I/T0_MASS;
+    fprintf('mass ratio: %f \n',I);
+    fprintf('mass of initial tree: %f \n',T0_MASS);    
     
     % calculate and output e_diss and e_disp
     [e1,e2,e3,e4] = qdata.get_interpolation_errors(cnext, fconc_exact, t(VCURTSTEP));
@@ -162,7 +170,7 @@ function advect()
     fprintf('e_total: %e \n',e4);  
     
     % plot final cross-section    
-    %qdata.draw_cross_section(cnext,0.5,'cross_Y');
+    qdata.draw_cross_section(cnext,0.5,'cross_Y');
     
     % SAVE THE RESULTS
     frep = fopen([OUTPUT_DIR,'report.dat'],'a');

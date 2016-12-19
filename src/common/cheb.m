@@ -89,9 +89,10 @@ classdef cheb < handle
                 %second order: raised cosine
                 fval = 0.5*(1+cos(pi*x));
             else
-                %construct a filter of order ord
-                a = -36.0437;
-                fval = exp(-a*x.^ord);
+                %exponential filter
+                %TODO: remove
+                beta = 2;
+                fval = exp( (-32*x).^(2*beta) );                
             end
         end
         
@@ -111,11 +112,20 @@ classdef cheb < handle
         end        
         
         function coeff = chebfilter2d(n,m,N)
-            tau = 0.03;
-            r = 0.3;
+            %tau = 0.03;
+            %r = 0.3;
             %coeff = 1 ./ ( 1 + tau*((n+m).^r).^2 );
             
             coeff = cheb.filterfun(1,(n+m)/(N-2));
+            
+            %exponential filter
+             %beta = 2;
+             %coeff = exp( (-32*(n/N)).^(2*beta) );
+            
+            %isotropic triangular
+            %coeff = 1 - (n/(N+1));
+            
+            %TODO: isotropic rhomboidal?    
         end
 
         %/* ************************************************** */
@@ -138,34 +148,29 @@ classdef cheb < handle
                 w(:,end) = w(:,end)/2;
             end
             
-            w_ = w;
-
-            % 1-d filter in y-direction
-            if FILTER
-             filter_y = cheb.chebfilter( n2 );
-             T_y = T_y .* repmat(filter_y, size(T_y,1), 1);
-            end
-            
             % 1-d filter in x-direction
             if FILTER
-             filter_x = cheb.chebfilter( n1 );
-             T_x = T_x .* repmat(filter_x, size(T_x,1), 1);
-            end
+                filter_x = cheb.chebfilter( n1 );
+                T_x = T_x .* repmat(filter_x, size(T_x,1), 1);
+            end            
+            
+            % 1-d filter in y-direction
+             if FILTER
+              filter_y = cheb.chebfilter( n2 );
+              T_y = T_y .* repmat(filter_y, size(T_y,1), 1);
+             end           
             
             % 2-d filter
-%             M_mat = repmat( linspace(0,n1-1,n1), n2, 1 );               % column indices
-%             N_mat = repmat( reshape(linspace(0,n2-1,n2),[],1), 1, n1 ); % row indices
-%             filter_coeffs = cheb.chebfilter2d(N_mat, M_mat, n1+n2);
-%             w_ = w_ .* filter_coeffs;
+             %w_ = w;
+             %if FILTER
+             %M_mat = repmat( linspace(0,n1-1,n1), n2, 1 );               % column indices
+             %N_mat = repmat( reshape(linspace(0,n2-1,n2),[],1), 1, n1 ); % row indices
+             %filter_coeffs = cheb.chebfilter2d(N_mat, M_mat, n1); %+n2?
+             %w_ = w_ .* filter_coeffs;
+             %end
             
-            %NOTES:
-            %T_y: length(y) x n2
-            %T_x: length(x) x n1
-            %f_(:,i): length(y) x 1
-            %f_: length(y) x n1
-            %fval: length(y) x length(x)
-            for i=1:size(w_,2)
-                f_(:,i)=T_y*reshape(w_(:,i),[],1);
+            for i=1:size(w,2)
+                f_(:,i)=T_y*reshape(w(:,i),[],1);
             end
             for j=1:length(y)
                 fval(j,:)=T_x*reshape(f_(j,:),[],1);

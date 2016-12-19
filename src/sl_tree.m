@@ -84,7 +84,7 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
 
     % THIRD METHOD: SEPARATE THE COMPUTATION AND REFINEMENT PROCESSES
     cnext = qtree.clone(c);
-
+    
     fprintf('--> SL: ');
     sl_time = tic;
     if ENABLE_CQMSL
@@ -107,7 +107,7 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
             fconc_interp = @conc_interp;
             refine_tree(cnext, fdo_refine);
             fconc_interp = @conc_interp_cqmsl;
-            qdata.init_data_alt(cnext,fsemilag,RES_PER_NODE);   
+            qdata.init_data_alt(cnext,fsemilag,RES_PER_NODE);   %problem here!
         end
         fprintf('%f\n',toc(rt_time))
     end
@@ -268,22 +268,18 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
 
     %/* ************************************************** */
     function ci = conc_interp_cqmsl(tq,xq,yq,zq)
-        %TODO: only works for regular grid
+        %NOTE: only works for regular grid
         %TODO: could be optimized since x,y is already calculated in
         %      init_data_alt
-        %TODO: include z
-        %get x,y values and mass S for each grid point
+        %TODO: include z?
+        %get mass S for each grid point
         src_leaves  = cnext.leaves();
         n_gridpoints = length(src_leaves)*(RES_PER_NODE+1)*(RES_PER_NODE+1);
-        xr = zeros(n_gridpoints,1);
-        yr = xr;
-        S = xr;  
+        S = zeros(n_gridpoints,1);  
         pos = 1; 
         for src_lvcnt =1:length(src_leaves)
             src_leaf = src_leaves{src_lvcnt};
             [xxr,yyr,zzr,dx,dy,dz] = src_leaf.mesh(RES_PER_NODE);
-            xr(pos:pos+numel(xxr)-1, 1) = xxr(:);
-            yr(pos:pos+numel(xxr)-1, 1) = yyr(:);
             S_leaf = ones(size(xxr))*dx*dy;
             S_leaf(end:end,1:end) = 0;
             S_leaf(1:end,end:end) = 0;
@@ -292,7 +288,7 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
         end
             
         %call cqmsl interpolation
-        ci = qdata.interp_points_cqmsl(c,xq,yq,zq,xr,yr,S,INTERP_TYPE,fconc_exact);
+        ci = qdata.interp_points_cqmsl(c,xq,yq,zq,S,INTERP_TYPE);
         ci = conc_out(ci,xq,yq,zq);               
     end
 
