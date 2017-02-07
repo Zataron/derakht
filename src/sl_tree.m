@@ -106,7 +106,7 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
             fconc_interp = @conc_interp;
             refine_tree(cnext, fdo_refine);
             fconc_interp = @conc_interp_cqmsl;
-            qdata.init_data_alt(cnext,fsemilag,RES_PER_NODE);   %problem here!
+            qdata.init_data_alt(cnext,fsemilag,RES_PER_NODE);
         end
         fprintf('%f\n',toc(rt_time))
     end
