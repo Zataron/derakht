@@ -103,7 +103,6 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
         else
             % CQMSL: can't go leaf by leaf
             % => the QMSL interpolation must be used for errors
-            % TODO: change this somehow?
             fconc_interp = @conc_interp;
             refine_tree(cnext, fdo_refine);
             fconc_interp = @conc_interp_cqmsl;
@@ -269,9 +268,6 @@ function cnext = sl_tree(c,u,v,t,fdo_refine,fconc_exact,fvel_exact)
     %/* ************************************************** */
     function ci = conc_interp_cqmsl(tq,xq,yq,zq)
         %NOTE: only works for regular grid
-        %TODO: could be optimized since x,y is already calculated in
-        %      init_data_alt
-        %TODO: include z?
         %get mass S for each grid point
         src_leaves  = cnext.leaves();
         n_gridpoints = length(src_leaves)*(RES_PER_NODE+1)*(RES_PER_NODE+1);

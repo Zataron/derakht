@@ -37,8 +37,7 @@ classdef qdata < handle
         % Initializes the values of all leaf octants based on the
         % input function values and grid resolution per node
         % computes all at once rather than going leaf by leaf
-        % TODO: only works for regular grid
-        % TODO: get zz from somewhere
+        % NOTE: only works for regular grid
             if nargin < 4, t = 0; end;
             
             % gather all grid points in [xx,yy]
@@ -217,7 +216,6 @@ classdef qdata < handle
                 zzcc = zzc(1:end-1,1:end-1);
 
                 vale = fexact(t,xxcc,yycc,zzcc);
-                %TODO: different interp_points for cqmsl?
                 valt = qdata.interp_points(leaf,xxcc,yycc,zzcc,INTERP_TYPE);
 
                 diff = vale - valt;
@@ -331,8 +329,7 @@ classdef qdata < handle
         
         %/* ************************************************** */
         function [xx,yy,vv] = grid_points_alt(tree)
-            % also returns grid points of leaves without data
-            % TODO: merge with grid_points()?
+            % difference to grid_points(): also returns grid points of leaves without data
             global INTERP_TYPE;
             global RES_PER_NODE;
             xx = []; yy = [];
@@ -406,7 +403,6 @@ classdef qdata < handle
         
         %/* ************************************************** */
         function val = get_mass(src_tree,INTERP_TYPE)
-            %TODO: change to S for regular grid?
             global RES_PER_NODE;
             if strcmp(INTERP_TYPE, 'CHEBYSHEV') 
                 % CHEBYSHEV GRID
@@ -493,29 +489,11 @@ classdef qdata < handle
         
         %/* ************************************************** */
         function [e_diss, e_disp, e_sum, e_total] = get_interpolation_errors(src_tree, fexact, t)
-            %TODO: remove output
             global INTERP_TYPE;
-            global TESTNUM;
             
             [X,Y] = qdata.grid_points(src_tree);
             [interp_values] = qdata.grid_data(src_tree);    
             real_values = fexact(t,X,Y,0);
-            
-            if strcmp(INTERP_TYPE, 'CHEBYSHEV')
-                % CHEBYSHEV GRID
-                %for now, we also save the values of a cross section
-                xx = reshape(linspace(0,1,99),[],1);
-                yy = 0.5*ones(size(xx));
-                zz = zeros(size(xx));
-                cs = qdata.interp_points(src_tree,xx,yy,zz,INTERP_TYPE);
-                cs_exact = fexact(t,xx,yy,0);
-                testnum_str = sprintf('%i',TESTNUM);
-                save(['testresults/test_results_cheb_',testnum_str,'.mat'],'X','Y','interp_values','real_values','cs','cs_exact');
-            %else
-                % REGULAR GRID
-                % for debugging: save the results
-                %save('testresults/test_results_sl_1.mat','X','Y','interp_values','real_values');                
-            end
 
             %get covariance, standard deviations, means, correlation coeff
             cv = cov(real_values, interp_values);
@@ -530,6 +508,8 @@ classdef qdata < handle
             e_disp = 2*(1-corr)*std_real*std_interp;  
             e_sum = e_diss+e_disp;
             
+            %e_total is the mean squared error
+            %it should be equal to e_sum
             M = (real_values-interp_values).^2;
             e_total = sum(M(:))/length(M(:));
         end    
@@ -538,7 +518,6 @@ classdef qdata < handle
         function draw_cross_section(src_tree,cs,mode,fig_num)
             if nargin < 4, fig_num = 1; end;
             global INTERP_TYPE;
-            global TESTNUM;
             if strcmp(INTERP_TYPE, 'CHEBYSHEV')                    
                 if strcmp(mode,'cross_X')
                     yy = reshape(linspace(0,1,99),[],1);
@@ -556,10 +535,6 @@ classdef qdata < handle
                 figure(fig_num)
                 plot(ii, iv)
                 grid on   
-                
-                testnum_str = sprintf('%i',TESTNUM);
-                fnum = sprintf('%i',fig_num);
-                save2pdf(['figures/cross_section_',testnum_str,'_part_',fnum,'.pdf']);
             else
                 if strcmp(mode,'cross_X')
                    [X,Y] = qdata.grid_points(src_tree);

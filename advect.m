@@ -26,7 +26,6 @@ function advect()
     global OUTPUT_DIR;
     
     global FILTER;
-    
     global T0_MASS;
 
     VPREVTSTEP  = 1;
@@ -36,8 +35,8 @@ function advect()
 
     % MAIN SCRIPT
     %fconc_exact   = @get_gaussian;
-    %fconc_exact   = @get_zalesak;
-    fconc_exact   = @get_cylinder_box;
+    fconc_exact   = @get_zalesak;
+    %fconc_exact   = @get_cylinder_box;
     %fconc_exact   = @get_inviscid_burgers;
     fvel_exact    = @get_vel_exact;
     fvelx_exact   = @get_velx_exact;
@@ -81,8 +80,8 @@ function advect()
     fprintf('INPUT ERROR: %12.2e\n', err(1,2));
     
     % DRAW CROSS SECTION ON INITIAL TREE
-    fprintf('Drawing cross section\n');
-    qdata.draw_cross_section(cinit,0.5,'cross_Y',1);
+    %fprintf('Drawing cross section\n');
+    %qdata.draw_cross_section(cinit,0.5,'cross_Y',1);
     
     % COMPUTE INITIAL TREE'S MASS
     T0_MASS = qdata.get_mass(cinit, INTERP_TYPE);
@@ -109,27 +108,7 @@ function advect()
         format longE
         disp(['TN: ', num2str(tstep), '   Error: ', num2str(e,'%12.2e')]);
         
-        % SAVE ERRORS AFTER FULL REVOLUTION
-        %if mod(tstep,100) == 0
-        %    % calculate and output mass ratio
-        %    I = qdata.get_mass(cnext, INTERP_TYPE)/T0_MASS;
-        %    fprintf('mass ratio: %f \n',I);     
-        %    I2 = qdata.get_mass_squared(cnext, INTERP_TYPE) / qdata.get_mass_squared(cinit, INTERP_TYPE);
-        %    fprintf('mass ratio squared: %f \n',I2);                
-
-            % calculate and output e_diss and e_disp
-        %    [e1,e2,e3,e4] = qdata.get_interpolation_errors(cnext, fconc_exact, t(VCURTSTEP));
-        %    fprintf('e_diss: %e \n',e1);
-        %    fprintf('e_disp: %e \n',e2);              
-            
-        %    %revnum = sprintf('%i',tstep/100);
-        %    %[X,Y] = qdata.grid_points(cnext);
-        %    %[interp_values] = qdata.grid_data(cnext);    
-        %    %real_values = fconc_exact(t(VCURTSTEP),X,Y,0);            
-        %    %save(['testresults/test_results_cqmsl_rev',revnum,'.mat'],'e','e1','e2','I','I2','X','Y','interp_values','real_values');           
-        %end      
-        
-        % CHEBYSHEV: DRAW CROSS SECTION AFTER EVERY 25 STEPS
+        % CHEBYSHEV TESTING: DRAW CROSS SECTION AFTER EVERY 25 STEPS
 %         if strcmp(INTERP_TYPE, 'CHEBYSHEV')
 %             if mod(tstep,25) == 0
 %                st = tstep/25;
@@ -145,7 +124,7 @@ function advect()
 %                     qdata.draw_cross_section(cnext,0.5,'cross_X',st+1);              
 %                end
 %             end   
-%         end
+%         end        
 
         % PREPARE FOR THE NEXT STEP
         c = cnext;
@@ -154,15 +133,13 @@ function advect()
     tot_elapsed_time = toc(main_time);
     
     % calculate and output mass ratio
-    %I = qdata.get_mass_ratio(cnext, fconc_exact, t(VCURTSTEP), INTERP_TYPE);
-    %fprintf('mass ratio 1: %f \n',I);  
     I = qdata.get_mass(cnext, INTERP_TYPE);
     fprintf('mass of resulting tree: %f \n',I);
     I = I/T0_MASS;
-    fprintf('mass ratio: %f \n',I);
-    fprintf('mass of initial tree: %f \n',T0_MASS);    
+    fprintf('mass ratio: %f \n',I);  
     
     % calculate and output e_diss and e_disp
+    % e_total is the mean squared error and should be equal to e_sum
     [e1,e2,e3,e4] = qdata.get_interpolation_errors(cnext, fconc_exact, t(VCURTSTEP));
     fprintf('e_diss: %e \n',e1);
     fprintf('e_disp: %e \n',e2);  
@@ -225,28 +202,6 @@ function advect()
     % delete(hRect);
         [val] = tree_do_refine_modified(node,func,MAX_ERROR_PER_NODE,MAX_LEVEL,RES_PER_NODE,t);
     end
-end
-
-function test_interpolate(fexact)
-    % TODO: for testing only, remove later on!
-    global RES_PER_NODE;
-    %get exact values
-    [xx, yy] = cheb.chebnodes2(RES_PER_NODE, RES_PER_NODE, 0, 1, 0, 1);   
-    zz = zeros(size(xx));
-    val = fexact(0,xx,yy,zz);
-
-    %calculate coeffs
-    [w] = cheb.chebcoeff(val);
-
-    %interpolate along cross section
-    ix = linspace(0,1,99)*2 - 1.0;
-    iy = 0.5*2 - 1.0;
-    iv = cheb.chebeval2(w,ix,iy);
-    
-    %draw cross section
-    figure(2)
-    plot(ix, iv)
-    grid on    
 end
 
 %/* ************************************************** */
